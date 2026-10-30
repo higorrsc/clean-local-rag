@@ -1,6 +1,6 @@
 import uuid
 
-from src.domain.entities import DocumentChunk
+from src.domain.entities import DocumentChunk, generate_chunk_id
 from src.domain.interfaces import (
     AsyncEmbeddingGateway,
     AsyncVectorRepository,
@@ -112,16 +112,24 @@ class IngestDocumentsUseCase:
         doc_id = str(uuid.uuid4())
         chunks: list[DocumentChunk] = []
 
-        for text, embedding in zip(text_chunks, embeddings, strict=True):
+        for idx, (text, embedding) in enumerate(
+            zip(text_chunks, embeddings, strict=True)
+        ):
+            chunk_id = generate_chunk_id(request.source, idx, text)
             chunks.append(
                 DocumentChunk(
                     content=text,
                     embedding=embedding,
+                    chunk_id=chunk_id,
                     document_id=doc_id,
                     source=request.source,
                     metadata=request.metadata or {},
                 )
             )
+
+        # Clean prior chunks for the same source to prevent duplication
+        if request.source and hasattr(self.vector_repository, "delete_by_source"):
+            self.vector_repository.delete_by_source(request.source)
 
         # Persist chunks in repository
         self.vector_repository.save_chunks(chunks)
@@ -161,16 +169,27 @@ class IngestDocumentsUseCase:
         doc_id = str(uuid.uuid4())
         chunks: list[DocumentChunk] = []
 
-        for text, embedding in zip(text_chunks, embeddings, strict=True):
+        for idx, (text, embedding) in enumerate(
+            zip(text_chunks, embeddings, strict=True)
+        ):
+            chunk_id = generate_chunk_id(request.source, idx, text)
             chunks.append(
                 DocumentChunk(
                     content=text,
                     embedding=embedding,
+                    chunk_id=chunk_id,
                     document_id=doc_id,
                     source=request.source,
                     metadata=request.metadata or {},
                 )
             )
+
+        # Clean prior chunks for the same source to prevent duplication
+        if request.source:
+            if hasattr(self.vector_repository, "adelete_by_source"):
+                await self.vector_repository.adelete_by_source(request.source)
+            elif hasattr(self.vector_repository, "delete_by_source"):
+                self.vector_repository.delete_by_source(request.source)
 
         if hasattr(self.vector_repository, "asave_chunks"):
             await self.vector_repository.asave_chunks(chunks)

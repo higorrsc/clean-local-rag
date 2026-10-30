@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 
 from src.domain.entities import DocumentChunk
@@ -73,6 +75,30 @@ class InMemoryVectorAdapter(VectorRepository, AsyncVectorRepository):
         """Clear all stored chunks."""
         self._chunks.clear()
 
+    async def aclear(self) -> None:
+        """Clear all stored chunks asynchronously."""
+        self.clear()
+
     def count(self) -> int:
         """Return number of stored chunks."""
         return len(self._chunks)
+
+    async def acount(self) -> int:
+        """Return number of stored chunks asynchronously."""
+        return self.count()
+
+    def delete_by_source(self, source: str) -> None:
+        """Remove all chunks matching source identifier."""
+        self._chunks = [c for c in self._chunks if c.source != source]
+
+    async def adelete_by_source(self, source: str) -> None:
+        """Remove all chunks matching source identifier asynchronously."""
+        self.delete_by_source(source)
+
+    def delete_by_metadata(self, key: str, value: Any) -> None:
+        """Remove all chunks whose metadata contains key == value."""
+        self._chunks = [c for c in self._chunks if c.metadata.get(key) != value]
+
+    async def adelete_by_metadata(self, key: str, value: Any) -> None:
+        """Remove all chunks matching metadata key/value asynchronously."""
+        self.delete_by_metadata(key, value)

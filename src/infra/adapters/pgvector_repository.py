@@ -279,3 +279,55 @@ class PgVectorAdapter(VectorRepository, AsyncVectorRepository):
             aconn.cursor() as cur,
         ):
             await cur.execute("TRUNCATE TABLE document_chunks;")
+
+    def delete_by_source(self, source: str) -> None:
+        """Delete all chunks matching source identifier."""
+        self._ensure_initialized()
+        with (
+            psycopg.connect(self.conn_str, autocommit=True) as conn,
+            conn.cursor() as cur,
+        ):
+            cur.execute(
+                "DELETE FROM document_chunks WHERE source = %(source)s;",
+                {"source": source},
+            )
+
+    async def adelete_by_source(self, source: str) -> None:
+        """Delete all chunks matching source identifier asynchronously."""
+        await self._aensure_initialized()
+        async with (
+            await psycopg.AsyncConnection.connect(
+                self.conn_str, autocommit=True
+            ) as aconn,
+            aconn.cursor() as cur,
+        ):
+            await cur.execute(
+                "DELETE FROM document_chunks WHERE source = %(source)s;",
+                {"source": source},
+            )
+
+    def delete_by_metadata(self, key: str, value: Any) -> None:
+        """Delete all chunks whose metadata contains key == value."""
+        self._ensure_initialized()
+        with (
+            psycopg.connect(self.conn_str, autocommit=True) as conn,
+            conn.cursor() as cur,
+        ):
+            cur.execute(
+                "DELETE FROM document_chunks WHERE metadata->>%s = %s;",
+                (key, str(value)),
+            )
+
+    async def adelete_by_metadata(self, key: str, value: Any) -> None:
+        """Delete all chunks matching metadata key/value asynchronously."""
+        await self._aensure_initialized()
+        async with (
+            await psycopg.AsyncConnection.connect(
+                self.conn_str, autocommit=True
+            ) as aconn,
+            aconn.cursor() as cur,
+        ):
+            await cur.execute(
+                "DELETE FROM document_chunks WHERE metadata->>%s = %s;",
+                (key, str(value)),
+            )

@@ -2,7 +2,7 @@ import uuid
 from pathlib import Path
 
 from src.application.use_cases.ingest_documents import chunk_text
-from src.domain.entities import DocumentChunk
+from src.domain.entities import DocumentChunk, generate_chunk_id
 from src.domain.interfaces import (
     AsyncEmbeddingGateway,
     AsyncVectorRepository,
@@ -80,11 +80,15 @@ class AsyncBatchIngestByLanguageUseCase:
                 )
 
             doc_id = str(uuid.uuid4())
-            for text, emb in zip(text_chunks, embeddings, strict=True):
+            for idx, (text, emb) in enumerate(
+                zip(text_chunks, embeddings, strict=True)
+            ):
+                chunk_id = generate_chunk_id(md_file.name, idx, text)
                 total_chunks.append(
                     DocumentChunk(
                         content=text,
                         embedding=emb,
+                        chunk_id=chunk_id,
                         document_id=doc_id,
                         source=md_file.name,
                         metadata={
@@ -100,6 +104,18 @@ class AsyncBatchIngestByLanguageUseCase:
             raise ValueError(
                 f"No valid chunks extracted from markdown files in '{target_dir}'."
             )
+
+        # Remove previous chunks for the language to ensure idempotency
+        if hasattr(self.vector_repository, "adelete_by_metadata"):
+            await self.vector_repository.adelete_by_metadata("language", language)
+        elif hasattr(self.vector_repository, "delete_by_metadata"):
+            self.vector_repository.delete_by_metadata("language", language)
+        else:
+            for doc_name in ingested_documents:
+                if hasattr(self.vector_repository, "adelete_by_source"):
+                    await self.vector_repository.adelete_by_source(doc_name)
+                elif hasattr(self.vector_repository, "delete_by_source"):
+                    self.vector_repository.delete_by_source(doc_name)
 
         # Persist chunks asynchronously if available
         if hasattr(self.vector_repository, "asave_chunks"):

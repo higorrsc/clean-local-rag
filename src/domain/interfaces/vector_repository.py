@@ -1,4 +1,4 @@
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from src.domain.entities.document_chunk import DocumentChunk
 
@@ -20,6 +20,12 @@ class VectorRepository(Protocol):
         Returns tuples of (chunk, similarity_score) sorted descending.
         """
 
+    def delete_by_source(self, source: str) -> None:
+        """Delete all chunks associated with the specified source identifier."""
+
+    def delete_by_metadata(self, key: str, value: Any) -> None:
+        """Delete all chunks whose metadata contains key == value."""
+
 
 @runtime_checkable
 class AsyncVectorRepository(Protocol):
@@ -37,3 +43,9 @@ class AsyncVectorRepository(Protocol):
         Search for top-k similar chunks given a query embedding asynchronously.
         Returns tuples of (chunk, similarity_score) sorted descending.
         """
+
+    async def adelete_by_source(self, source: str) -> None:
+        """Delete all chunks associated with the source identifier asynchronously."""
+
+    async def adelete_by_metadata(self, key: str, value: Any) -> None:
+        """Delete all chunks whose metadata contains key == value asynchronously."""

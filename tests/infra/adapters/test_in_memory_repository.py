@@ -56,3 +56,34 @@ async def test_async_in_memory_repository_operations():
     assert len(results) == 1
     assert results[0][0].content == "Async chunk"
     assert round(results[0][1], 4) == 1.0
+
+
+def test_in_memory_delete_by_source_and_metadata():
+    adapter = InMemoryVectorAdapter()
+    c1 = DocumentChunk(
+        content="C1",
+        embedding=[0.1],
+        source="doc1.md",
+        metadata={"lang": "pt-br"},
+    )
+    c2 = DocumentChunk(
+        content="C2",
+        embedding=[0.2],
+        source="doc2.md",
+        metadata={"lang": "pt-br"},
+    )
+    c3 = DocumentChunk(
+        content="C3",
+        embedding=[0.3],
+        source="doc3.md",
+        metadata={"lang": "en"},
+    )
+    adapter.save_chunks([c1, c2, c3])
+    assert adapter.count() == 3
+
+    adapter.delete_by_source("doc1.md")
+    assert adapter.count() == 2
+
+    adapter.delete_by_metadata("lang", "en")
+    assert adapter.count() == 1
+    assert adapter._chunks[0].source == "doc2.md"

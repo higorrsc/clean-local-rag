@@ -126,6 +126,29 @@ def test_pgvector_count_and_clear(mock_connect):
     assert "TRUNCATE TABLE" in mock_cursor.execute.call_args[0][0]
 
 
+@patch("src.infra.adapters.pgvector_repository.psycopg.connect")
+def test_pgvector_delete_by_source_and_metadata(mock_connect):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+    mock_connect.return_value.__enter__.return_value = mock_conn
+
+    adapter = PgVectorAdapter(auto_init=False)
+    adapter._initialized = True
+
+    adapter.delete_by_source("test.md")
+    assert (
+        "DELETE FROM document_chunks WHERE source ="
+        in (mock_cursor.execute.call_args[0][0])
+    )
+
+    adapter.delete_by_metadata("lang", "pt-br")
+    assert (
+        "DELETE FROM document_chunks WHERE metadata->>"
+        in (mock_cursor.execute.call_args[0][0])
+    )
+
+
 @pytest.mark.anyio
 @patch(
     "src.infra.adapters.pgvector_repository.psycopg.AsyncConnection.connect",

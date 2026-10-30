@@ -28,6 +28,12 @@ class FakeVectorRepository:
     ) -> list[tuple[DocumentChunk, float]]:
         return [(c, 0.95) for c in self.chunks[:top_k]]
 
+    def delete_by_source(self, source: str) -> None:
+        self.chunks = [c for c in self.chunks if c.source != source]
+
+    def delete_by_metadata(self, key: str, value: object) -> None:
+        self.chunks = [c for c in self.chunks if c.metadata.get(key) != value]
+
 
 def test_chunk_text():
     text = "Word " * 150  # ~750 chars
@@ -77,6 +83,9 @@ async def test_ingest_documents_use_case_async():
         async def asave_chunks(self, chunks: list[DocumentChunk]) -> None:
             self.chunks.extend(chunks)
 
+        async def adelete_by_source(self, source: str) -> None:
+            self.chunks = [c for c in self.chunks if c.source != source]
+
     embedder = FakeAsyncEmbedder()
     repo = FakeAsyncRepo()
     use_case = IngestDocumentsUseCase(embedder, repo, chunk_size=100)
@@ -90,3 +99,18 @@ async def test_ingest_documents_use_case_async():
     assert response.status == "success"
     assert response.chunks_count >= 1
     assert len(repo.chunks) == response.chunks_count
+
+
+def test_ingest_documents_reingest_replaces_source():
+    embedder = FakeEmbeddingGateway()
+    repo = FakeVectorRepository()
+    use_case = IngestDocumentsUseCase(embedder, repo, chunk_size=100)
+
+    req1 = IngestRequest(content="Version 1 content", source="file.txt")
+    res1 = use_case.execute(req1)
+    assert len(repo.chunks) == res1.chunks_count
+
+    req2 = IngestRequest(content="Version 2 updated content", source="file.txt")
+    res2 = use_case.execute(req2)
+    assert len(repo.chunks) == res2.chunks_count
+    assert repo.chunks[0].content == "Version 2 updated content"

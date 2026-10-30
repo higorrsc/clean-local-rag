@@ -10,6 +10,7 @@ from rich.table import Table
 from src.application.use_cases import AskQuestionUseCase, IngestDocumentsUseCase
 from src.domain.interfaces import VectorRepository
 from src.domain.models import IngestRequest, QueryRequest
+from src.infra.adapters.in_memory_repository import InMemoryVectorAdapter
 from src.infra.adapters.ollama import OllamaAdapter
 from src.infra.adapters.vector_factory import create_vector_repository
 
@@ -20,8 +21,8 @@ app = typer.Typer(
 )
 console = Console()
 
-# Singleton vector repository instance for CLI session
-in_memory_repo: VectorRepository = create_vector_repository()
+# Singleton in-memory repository instance for CLI in-memory sessions/tests
+in_memory_repo: VectorRepository = InMemoryVectorAdapter()
 
 
 def get_adapters(

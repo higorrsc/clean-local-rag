@@ -116,3 +116,38 @@ async def test_pgvector_live_async_integration_lifecycle():
 
     await adapter.aclear()
     assert await adapter.acount() == 0
+
+
+@pytest.mark.skipif(
+    not is_postgres_available(),
+    reason="Live PostgreSQL/pgvector container is not running.",
+)
+def test_pgvector_live_delete_by_source_and_metadata():
+    """
+    Verify live deletion by source and metadata key in pgvector.
+    """
+    adapter = PgVectorAdapter(conn_str=settings.pg_dsn, auto_init=False)
+    adapter.clear()
+
+    vec = [0.0] * 768
+    c1 = DocumentChunk(
+        content="Chunk 1",
+        embedding=vec,
+        source="doc_pt.md",
+        metadata={"lang": "pt-br"},
+    )
+    c2 = DocumentChunk(
+        content="Chunk 2",
+        embedding=vec,
+        source="doc_en.md",
+        metadata={"lang": "en"},
+    )
+
+    adapter.save_chunks([c1, c2])
+    assert adapter.count() == 2
+
+    adapter.delete_by_source("doc_pt.md")
+    assert adapter.count() == 1
+
+    adapter.delete_by_metadata("lang", "en")
+    assert adapter.count() == 0

@@ -46,6 +46,12 @@ class FakeRepo:
     ) -> list[tuple[DocumentChunk, float]]:
         return []
 
+    def delete_by_source(self, source: str) -> None:
+        pass
+
+    def delete_by_metadata(self, key: str, value: object) -> None:
+        pass
+
 
 class FakeAsyncRepo:
     async def asave_chunks(self, chunks: list[DocumentChunk]) -> None:
@@ -55,6 +61,12 @@ class FakeAsyncRepo:
         self, query_embedding: list[float], top_k: int = 4
     ) -> list[tuple[DocumentChunk, float]]:
         return []
+
+    async def adelete_by_source(self, source: str) -> None:
+        pass
+
+    async def adelete_by_metadata(self, key: str, value: object) -> None:
+        pass
 
 
 def test_protocols_runtime_checkable():

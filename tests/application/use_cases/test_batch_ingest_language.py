@@ -44,6 +44,35 @@ async def test_batch_ingest_by_language_success(tmp_path: Path):
 
 
 @pytest.mark.anyio
+async def test_batch_ingest_by_language_repeated_is_idempotent(tmp_path: Path):
+    lang_dir = tmp_path / "pt-br"
+    lang_dir.mkdir(parents=True)
+    doc1 = lang_dir / "doc1.md"
+    doc1.write_text("# Barbearia 1\n\nInformações gerais.", encoding="utf-8")
+    doc2 = lang_dir / "doc2.md"
+    doc2.write_text("# Preços\n\nCorte custa R$ 50.", encoding="utf-8")
+
+    repo = InMemoryVectorAdapter()
+    embedder = FakeAsyncEmbedder()
+
+    use_case = AsyncBatchIngestByLanguageUseCase(
+        embedding_gateway=embedder,
+        vector_repository=repo,
+        docs_dir=tmp_path,
+    )
+
+    req = BatchIngestRequest(language="pt-br")
+    res1 = await use_case.execute(req)
+    assert res1.chunks_count == 2
+    assert repo.count() == 2
+
+    # Second ingestion with same language should replace, keeping count at 2
+    res2 = await use_case.execute(req)
+    assert res2.chunks_count == 2
+    assert repo.count() == 2
+
+
+@pytest.mark.anyio
 async def test_batch_ingest_missing_directory(tmp_path: Path):
     repo = InMemoryVectorAdapter()
     embedder = FakeAsyncEmbedder()
