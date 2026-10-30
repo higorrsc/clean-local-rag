@@ -1,10 +1,16 @@
 {
   "cSpell.language": "en,pt-BR",
   "cSpell.words": [
+    "aexecute",
+    "agenerate",
+    "asave",
+    "asearch",
+    "ASGI",
     "chunker",
     "datamodel",
     "embedder",
     "FAISS",
+    "fastapi",
     "healthcheck",
     "httpx",
     "isready",
@@ -25,8 +31,10 @@
     "pytest",
     "qwen",
     "Rossum",
+    "testclient",
     "typer",
     "Typer",
+    "uvicorn",
     "vecs"
   ],
   // ----------------------------
