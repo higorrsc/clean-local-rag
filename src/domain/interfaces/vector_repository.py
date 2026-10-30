@@ -13,9 +13,27 @@ class VectorRepository(Protocol):
     def search_similar(
         self,
         query_embedding: list[float],
-        top_k: int = 3,
+        top_k: int = 4,
     ) -> list[tuple[DocumentChunk, float]]:
         """
         Search for top-k similar chunks given a query embedding.
-        Returns a list of tuples (chunk, similarity_score) ordered by descending similarity.
+        Returns tuples of (chunk, similarity_score) sorted descending.
+        """
+
+
+@runtime_checkable
+class AsyncVectorRepository(Protocol):
+    """Contract for asynchronous vector persistence and similarity retrieval."""
+
+    async def asave_chunks(self, chunks: list[DocumentChunk]) -> None:
+        """Persist document chunks and their embeddings asynchronously."""
+
+    async def asearch_similar(
+        self,
+        query_embedding: list[float],
+        top_k: int = 4,
+    ) -> list[tuple[DocumentChunk, float]]:
+        """
+        Search for top-k similar chunks given a query embedding asynchronously.
+        Returns tuples of (chunk, similarity_score) sorted descending.
         """

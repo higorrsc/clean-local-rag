@@ -6,7 +6,8 @@ from typing import Any
 @dataclass(frozen=True)
 class DocumentChunk:
     """
-    Core domain entity representing a semantic slice of a document with its vector embedding.
+    Core domain entity representing a semantic slice of a document
+    with its vector embedding.
     """
 
     content: str
