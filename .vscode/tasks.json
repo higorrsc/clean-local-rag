@@ -1,0 +1,73 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "FastAPI: Run",
+      "type": "shell",
+      "command": "make",
+      "args": ["run"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "FastAPI: Dev",
+      "type": "shell",
+      "command": "make",
+      "args": ["dev"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Tests",
+      "type": "shell",
+      "command": "make",
+      "args": ["test"],
+      "group": "test",
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Lint",
+      "type": "shell",
+      "command": "make",
+      "args": ["lint"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Format",
+      "type": "shell",
+      "command": "make",
+      "args": ["format"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Fix",
+      "type": "shell",
+      "command": "make",
+      "args": ["fix"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Check",
+      "type": "shell",
+      "command": "make",
+      "args": ["check"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Clean",
+      "type": "shell",
+      "command": "make",
+      "args": ["clean"],
+      "problemMatcher": []
+    }
+  ]
+}
