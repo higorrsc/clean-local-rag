@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from src.infra.adapters.in_memory_repository import InMemoryVectorAdapter
 from src.infra.adapters.pgvector_repository import PgVectorAdapter
-from src.presentation.cli.main import get_adapters
+from src.presentation.cli.main import get_adapters, get_backend_name
 
 
 def test_cli_get_adapters_uses_vector_factory():
@@ -30,3 +30,12 @@ def test_cli_get_adapters_with_pgvector_backend():
         assert isinstance(repo, PgVectorAdapter)
         assert ingest_uc.vector_repository is repo
         assert ask_uc.vector_repository is repo
+
+
+def test_get_backend_name_display():
+    mem_repo = InMemoryVectorAdapter()
+    assert get_backend_name(mem_repo) == "MEMORY"
+
+    with patch("src.infra.adapters.pgvector_repository.psycopg.connect"):
+        pg_repo = PgVectorAdapter(auto_init=False)
+        assert get_backend_name(pg_repo) == "PGVECTOR"

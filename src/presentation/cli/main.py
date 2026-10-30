@@ -8,6 +8,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from src.application.use_cases import AskQuestionUseCase, IngestDocumentsUseCase
+from src.config.settings import settings
 from src.domain.interfaces import VectorRepository
 from src.domain.models import IngestRequest, QueryRequest
 from src.infra.adapters.in_memory_repository import InMemoryVectorAdapter
@@ -25,8 +26,18 @@ console = Console()
 in_memory_repo: VectorRepository = InMemoryVectorAdapter()
 
 
+def get_backend_name(repo: VectorRepository | None = None) -> str:
+    """Return the display name of the active vector backend."""
+    if repo is not None and type(repo).__name__ == "InMemoryVectorAdapter":
+        return "MEMORY"
+    if repo is not None and type(repo).__name__ == "PgVectorAdapter":
+        return "PGVECTOR"
+    return settings.vector_backend.upper()
+
+
 def get_adapters(
     repo: VectorRepository | None = None,
+    backend: str | None = None,
 ) -> tuple[
     OllamaAdapter,
     VectorRepository,
@@ -35,7 +46,9 @@ def get_adapters(
 ]:
     """Composition Root: wires adapters and use cases."""
     embedder_llm = OllamaAdapter()
-    active_repo = repo if repo is not None else create_vector_repository()
+    active_repo = (
+        repo if repo is not None else create_vector_repository(backend=backend)
+    )
     ingest_use_case = IngestDocumentsUseCase(
         embedding_gateway=embedder_llm,
         vector_repository=active_repo,
@@ -76,6 +89,14 @@ def ingest(
             help="Source identifier (e.g. filename or label).",
         ),
     ] = None,
+    backend: Annotated[
+        str | None,
+        typer.Option(
+            "--backend",
+            "-b",
+            help="Vector storage backend ('memory' or 'pgvector').",
+        ),
+    ] = None,
 ) -> None:
     """
     Ingest a document (from text or file) into the vector repository.
@@ -99,7 +120,11 @@ def ingest(
             console.print(f"[bold red]Erro ao ler o arquivo {file}:[/bold red] {e}")
             raise typer.Exit(code=1) from e
 
-    _, _, ingest_uc, _ = get_adapters()
+    if backend:
+        _, repo, ingest_uc, _ = get_adapters(backend=backend)
+    else:
+        _, repo, ingest_uc, _ = get_adapters()
+    backend_name = get_backend_name(repo)
 
     try:
         req = IngestRequest(content=content or "", source=src_label)
@@ -107,6 +132,7 @@ def ingest(
         console.print(
             Panel(
                 f"[bold green]Sucesso na Ingestão![/bold green]\n\n"
+                f"• Backend: [bold magenta]{backend_name}[/bold magenta]\n"
                 f"• Chunks indexados: [cyan]{res.chunks_count}[/cyan]\n"
                 f"• Origem: [yellow]{src_label or 'texto direto'}[/yellow]\n"
                 f"• ID do Documento: [dim]{res.document_id}[/dim]",
@@ -129,11 +155,23 @@ def ask(
             help="Número de chunks mais relevantes a recuperar.",
         ),
     ] = 4,
+    backend: Annotated[
+        str | None,
+        typer.Option(
+            "--backend",
+            "-b",
+            help="Vector storage backend ('memory' or 'pgvector').",
+        ),
+    ] = None,
 ) -> None:
     """
     Ask a question over the indexed knowledge base.
     """
-    _, _, _, ask_uc = get_adapters()
+    if backend:
+        _, repo, _, ask_uc = get_adapters(backend=backend)
+    else:
+        _, repo, _, ask_uc = get_adapters()
+    backend_name = get_backend_name(repo)
 
     try:
         req = QueryRequest(question=question, top_k=top_k)
@@ -143,6 +181,10 @@ def ask(
             Panel(
                 res.answer,
                 title="[bold green]Resposta do Assistente[/bold green]",
+                subtitle=(
+                    f"Backend: [bold magenta]{backend_name}[/bold magenta] | "
+                    f"Fontes: {len(res.sources)}"
+                ),
             )
         )
 
@@ -230,28 +272,42 @@ def parse_interactive_ingest(raw_arg: str) -> tuple[str, str | None]:
 
 
 @app.command()
-def interactive() -> None:
+def interactive(
+    backend: Annotated[
+        str | None,
+        typer.Option(
+            "--backend",
+            "-b",
+            help="Vector storage backend ('memory' or 'pgvector').",
+        ),
+    ] = None,
+) -> None:
     """
     Start an interactive session where documents can be ingested and queried
-    in memory without resetting between commands.
+    without resetting between commands.
     """
+    if backend:
+        _, repo, ingest_uc, ask_uc = get_adapters(backend=backend)
+    else:
+        _, repo, ingest_uc, ask_uc = get_adapters()
+    backend_name = get_backend_name(repo)
+
     panel_text = (
-        "[bold cyan]Modo Interativo RAG Local[/bold cyan]\n"
+        f"[bold cyan]Modo Interativo RAG Local[/bold cyan] "
+        f"[dim](Backend: [bold magenta]{backend_name}[/bold magenta])[/dim]\n\n"
         "Comandos disponíveis:\n"
         "  [yellow]ingest <arquivo>[/yellow] ou "
         "[yellow]ingest -f <arquivo>[/yellow] - Ingestão de arquivo\n"
         "  [yellow]ingest <texto>[/yellow] ou "
-        "[yellow]ingest -t <texto>[/yellow]   - Ingestão de texto\n"
+        "[yellow]ingest -t <texto>[/yellow]     - Ingestão de texto\n"
         "  [yellow]ask <pergunta>[/yellow]                         "
-        "- Fazer uma pergunta sobre o contexto\n"
+        " - Fazer uma pergunta sobre o contexto\n"
         "  [yellow]status / count[/yellow]                         "
-        "- Ver quantidade de chunks indexados\n"
+        " - Ver quantidade de chunks e backend ativo\n"
         "  [yellow]exit / quit[/yellow]                            "
-        "- Sair da sessão"
+        " - Sair da sessão"
     )
     console.print(Panel.fit(panel_text, title="Bem-vindo ao RAG CLI"))
-
-    _, repo, ingest_uc, ask_uc = get_adapters()
 
     while True:
         try:
@@ -279,14 +335,16 @@ def interactive() -> None:
                 req = IngestRequest(content=content, source=src_label)
                 res = ingest_uc.execute(req)
                 console.print(
-                    f"[green]✓ Ingestão concluída:[/green] "
+                    f"[green]✓ Ingestão concluída ({backend_name}):[/green] "
                     f"[cyan]{res.chunks_count}[/cyan] chunks de "
                     f"[yellow]{src_label}[/yellow] "
-                    f"(Total: [bold]{repo.count()}[/bold])"
+                    f"(Total no banco: [bold]{repo.count()}[/bold])"
                 )
 
             elif cmd in ("status", "count"):
                 console.print(
+                    f"[cyan]Backend ativo:[/cyan] "
+                    f"[bold magenta]{backend_name}[/bold magenta] | "
                     f"[cyan]Chunks indexados:[/cyan] [bold]{repo.count()}[/bold]"
                 )
 
