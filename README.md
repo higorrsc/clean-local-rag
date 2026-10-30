@@ -38,7 +38,7 @@ Infrastructure (Ollama via HTTPX, In-Memory Vector Repository / PgVector via Psy
 ### 📂 Directory Structure
 
 ```text
-rag_project/
+clean-local-rag/
 ├── openapi.yaml                 # OpenAPI specification (Single Source of Truth)
 ├── pyproject.toml               # Dependencies and tools managed with uv
 ├── compose.yaml                 # Docker infrastructure (Ollama + PgVector)
@@ -84,8 +84,8 @@ rag_project/
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
-cd rag-cli
+git clone https://github.com/higorrsc/clean-local-rag.git
+cd clean-local-rag
 ```
 
 ### 2. Configure Environment Variables
