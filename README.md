@@ -283,4 +283,5 @@ All commits adhere to **Conventional Commits** paired with **Gitmoji**:
 
 ## 📄 License
 
-This project is created for portfolio and advanced architectural reference for Local RAG in Python. Feel free to use and adapt as needed.
+This project is open-source software licensed under the [MIT License](LICENSE).
+
