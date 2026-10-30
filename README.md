@@ -6,18 +6,23 @@ A modular, **100% Local, Private, and Secure RAG (Retrieval-Augmented Generation
 
 ## 📌 Overview
 
-This project provides an end-to-end local semantic search and context-grounded answer generation solution using local LLM models via **Ollama** and vector similarity with **Cosine Similarity** in memory, with support for **pgvector**.
+This project provides an end-to-end local semantic search and context-grounded answer generation solution using local LLM models via **Ollama** and pluggable vector storage:
+- **In-Memory Vector Repository**: Zero-dependency, ephemeral, and fast cosine similarity retrieval (ideal for quick tests and lightweight CLI sessions).
+- **PostgreSQL with pgvector**: Production-grade persistent vector storage using native Cosine Distance (`<=>`) operations, powered by `psycopg` and `pgvector`.
 
 ### ✨ Key Features
 
 - **100% Local & Secure:** No reliance on external LLM APIs (such as OpenAI or Anthropic); your data never leaves your local environment.
-- **No Opaque Frameworks:** Free from LangChain or LlamaIndex abstractions. Orchestration, prompt construction, and chunking strategies are implemented manually with full control and transparency.
+- **No Opaque Frameworks:** Free from LangChain or LlamaIndex abstractions. Orchestration, prompt construction, and chunking strategies are implemented manually with full control, testability, and transparency.
 - **Spec-Driven Design (SDD):** Contracts strictly defined in [openapi.yaml](openapi.yaml) as the single source of truth, with Pydantic models automatically generated via `datamodel-code-generator`.
+- **Pluggable Vector Backends (`memory` | `pgvector`):** Switch effortlessly between in-memory and persistent PostgreSQL vector storage via the `VECTOR_BACKEND` environment variable or the `--backend` (`-b`) CLI flag.
+- **Idempotent Ingestion:** Re-ingesting a document by file or source identifier automatically updates and replaces prior chunks instead of creating duplicates, using deterministic UUIDv5 chunk identifiers.
 - **Dual Presentation Layer (CLI & Web API):**
-  - **Interactive & Single-Command CLI:** Built with **Typer** and **Rich**.
+  - **Interactive & Single-Command CLI:** Built with **Typer** and **Rich**, with real-time active backend badges and session inspection commands (`status`).
   - **Asynchronous REST API & Web UI:** Built with **FastAPI**, featuring automatic Swagger documentation and an interactive browser chat interface with zero external CDN dependencies.
-- **Language-Based Batch Ingestion:** Ability to automatically scan and ingest all markdown files grouped in language directories (`docs/<language>/*.md`).
+- **Language-Based Batch Ingestion:** Automatically scans and ingests all markdown files grouped in language directories (`docs/<language>/*.md`).
 - **Bilingual Knowledge Base Included:** Practical barbershop chain examples provided in Portuguese (`docs/pt-br/`) and English (`docs/en/`).
+- **Shared State Across Interfaces:** When using `pgvector`, documents ingested via the Web UI are instantly queryable in the CLI and vice-versa.
 
 ---
 
@@ -32,7 +37,7 @@ Application (Use Cases: Ingestion, Semantic Query, Batch by Language)
      ↓
 Domain (Entities, Protocols, OpenAPI-generated Models)
      ↑
-Infrastructure (Ollama via HTTPX, In-Memory Vector Repository / PgVector via Psycopg)
+Infrastructure (Ollama via HTTPX, In-Memory Repository, PgVector via Psycopg)
 ```
 
 ### 📂 Directory Structure
@@ -41,7 +46,7 @@ Infrastructure (Ollama via HTTPX, In-Memory Vector Repository / PgVector via Psy
 clean-local-rag/
 ├── openapi.yaml                 # OpenAPI specification (Single Source of Truth)
 ├── pyproject.toml               # Dependencies and tools managed with uv
-├── compose.yaml                 # Docker infrastructure (Ollama + PgVector)
+├── compose.yaml                 # Docker infrastructure (Ollama + PgVector + Auto-pull)
 ├── .env.example                 # Environment variables template
 ├── docs/                        # Sample bilingual knowledge base
 │   ├── pt-br/                   # Portuguese documents
@@ -49,20 +54,20 @@ clean-local-rag/
 ├── src/
 │   ├── config/                  # Centralized settings via pydantic-settings
 │   ├── domain/                  # Domain core (Entities, Interfaces, and SDD Models)
-│   │   ├── entities/            # DocumentChunk entity
+│   │   ├── entities/            # DocumentChunk entity & deterministic UUID generator
 │   │   ├── interfaces/          # Protocols (Embedding, LLM, and Vector Repositories)
 │   │   └── models/              # Pydantic models generated from openapi.yaml
 │   ├── application/             # RAG orchestration use cases
-│   │   └── use_cases/           # Single ingest, semantic ask, and language batch ingest
+│   │   └── use_cases/           # Ingest, semantic query, and language batch ingest
 │   ├── infra/                   # Infrastructure adapters
-│   │   └── adapters/            # OllamaAdapter (HTTPX sync/async), InMemoryVectorAdapter
+│   │   └── adapters/            # OllamaAdapter, InMemoryVectorAdapter, PgVectorAdapter, Factory
 │   └── presentation/            # Presentation layer
-│       ├── cli/                 # Typer CLI application (interactive & command modes)
+│       ├── cli/                 # Typer CLI application (interactive & single commands)
 │       └── api/                 # FastAPI Web API and chat UI
 └── tests/                       # Segregated test suite mirroring src/
     ├── domain/                  # Entity and protocol check tests
-    ├── infra/                   # Adapter tests with mocked HTTP transports
-    ├── application/             # Unit tests for use cases
+    ├── infra/                   # Adapter tests (mocked HTTP & live pgvector integration)
+    ├── application/             # Unit tests for use cases with fakes
     └── presentation/            # End-to-end tests for CLI and FastAPI ASGI app
 ```
 
@@ -72,10 +77,10 @@ clean-local-rag/
 
 - **Python:** `>= 3.15`
 - **Package Manager:** [uv](https://github.com/astral-sh/uv) (fast, deterministic)
-- **Ollama:** Installed locally or run via Docker with the following models:
+- **Docker & Docker Compose:** Required to run PostgreSQL with `pgvector` and Ollama
+- **Ollama Models:**
   - `nomic-embed-text` (768-dimensional embedding generation)
   - `qwen3:4b-instruct` (instruction-tuned LLM for context-grounded reasoning)
-- **Docker & Docker Compose** (optional, to run the complete containerized stack)
 
 ---
 
@@ -96,16 +101,22 @@ Copy the environment variables template:
 cp .env.example .env
 ```
 
-Edit `.env` if necessary. Defaults are preconfigured for local use:
+Configure `.env` according to your desired backend:
 
 ```dotenv
+# Vector storage backend: 'memory' or 'pgvector'
+VECTOR_BACKEND=pgvector
+
+# PostgreSQL with pgvector connection string
 PG_DSN=postgresql://dev:dev@localhost:5432/rag_db
+
+# Ollama API settings
 OLLAMA_BASE_URL=http://localhost:11434/api
 EMBED_MODEL=nomic-embed-text:latest
 CHAT_MODEL=qwen3:4b-instruct
 ```
 
-### 3. Install Dependencies
+### 3. Install Python Dependencies
 
 Using `uv`:
 
@@ -113,19 +124,21 @@ Using `uv`:
 uv sync
 ```
 
-### 4. Pull Models in Ollama
+### 4. Start Infrastructure with Docker Compose
 
-If you have Ollama running locally on your host:
+Run the containers for PostgreSQL (`pgvector/pgvector:pg16`) and Ollama:
+
+```bash
+docker compose up -d
+```
+
+> **Note:** The `ollama-init` helper service will automatically wait for Ollama to become healthy and pull the `nomic-embed-text` and `qwen3:4b-instruct` models.
+
+Alternatively, if you already have Ollama installed on your host machine:
 
 ```bash
 ollama pull nomic-embed-text
 ollama pull qwen3:4b-instruct
-```
-
-Alternatively, start the complete stack with Docker Compose (which pulls models automatically on startup):
-
-```bash
-docker compose up -d
 ```
 
 ---
@@ -134,57 +147,73 @@ docker compose up -d
 
 ### 1. CLI (Command-Line Interface)
 
-The CLI provides both an interactive in-memory session mode and direct single commands.
+The CLI supports both an interactive terminal session and single-shot commands, with explicit backend indicator panels.
 
-#### 💬 Interactive Session Mode (Recommended for Terminal Testing)
+#### 💬 Interactive Session Mode
 
-Maintains indexed chunks across sequential prompts:
+Launch an interactive session:
 
 ```bash
+# Uses backend from .env (e.g. PGVECTOR)
 uv run python -m src.presentation.cli interactive
+
+# Or explicitly select the backend via flag
+uv run python -m src.presentation.cli interactive --backend pgvector
+uv run python -m src.presentation.cli interactive --backend memory
 ```
 
-Inside the interactive session:
+Inside the interactive prompt:
 
 ```text
-rag-cli> ingest docs/en/overview-and-branches.md
-✓ Ingestão concluída: 7 chunks de overview-and-branches.md (Total: 7)
+╭─────────────────────────────── Bem-vindo ao RAG CLI ─────────────────────────────────╮
+│ Modo Interativo RAG Local (Backend: PGVECTOR)                                        │
+│                                                                                      │
+│ Comandos disponíveis:                                                                │
+│   ingest <arquivo> ou ingest -f <arquivo> - Ingestão de arquivo                      │
+│   ingest <texto> ou ingest -t <texto>     - Ingestão de texto                        │
+│   ask <pergunta>                          - Fazer uma pergunta sobre o contexto      │
+│   status / count                          - Ver quantidade de chunks e backend ativo │
+│   exit / quit                             - Sair da sessão                           │
+╰──────────────────────────────────────────────────────────────────────────────────────╯
 
-rag-cli> ingest docs/en/services-and-pricing.md
-✓ Ingestão concluída: 6 chunks de services-and-pricing.md (Total: 13)
-
-rag-cli> ask Which branch is exclusively dedicated to women and what services does it offer?
-Resposta:
-The branch exclusively dedicated to women is the Studio Femme branch, offering specialized salon services...
+rag-cli> ingest docs/pt-br/visao-geral-e-unidades.md
+✓ Ingestão concluída: 7 chunks de visao-geral-e-unidades.md (Total: 7)
 
 rag-cli> status
-Chunks indexados: 13
+Backend ativo: PGVECTOR | Chunks indexados: 7
 
-rag-cli> exit
+rag-cli> ask Quais são as unidades disponíveis e quais os diferenciais da unidade Jardins?
+╭──────────────────────────────── Resposta do Assistente ────────────────────────────────╮
+│ As unidades disponíveis são Central Imperial, Jardins Prime e Studio Femme.           │
+│ A unidade Jardins Prime oferece atendimento VIP com lounge de degustação...           │
+╰────────────────────── Backend: PGVECTOR | Fontes: 4 ──────────────────────────────────╯
+
+rag-cli> quit
+Encerrando sessão interativa...
 ```
 
 #### ⚡ Direct Single Commands
 
-- **Ingest text directly:**
-
+- **Ingest a document file:**
   ```bash
-  uv run python -m src.presentation.cli ingest --text "Imperial Barbershop was founded in 2018." --source "history.txt"
+  uv run python -m src.presentation.cli ingest --file docs/pt-br/visao-geral-e-unidades.md
+  # or with explicit backend:
+  uv run python -m src.presentation.cli ingest -f docs/pt-br/visao-geral-e-unidades.md -b pgvector
   ```
 
-- **Ingest a document file:**
-
+- **Ingest text directly:**
   ```bash
-  uv run python -m src.presentation.cli ingest --file docs/en/overview-and-branches.md
+  uv run python -m src.presentation.cli ingest --text "A Barbearia Imperial foi fundada em 2018." --source "historia.txt"
   ```
 
 - **Ask a question:**
-
   ```bash
-  uv run python -m src.presentation.cli ask "What are the available branches?"
+  uv run python -m src.presentation.cli ask "Quais os horários de funcionamento?"
+  # or with explicit backend:
+  uv run python -m src.presentation.cli ask "Quais os horários de funcionamento?" -b pgvector
   ```
 
 - **Display help:**
-
   ```bash
   uv run python -m src.presentation.cli --help
   ```
@@ -193,7 +222,7 @@ rag-cli> exit
 
 ### 2. Web API (FastAPI) & Interactive Web UI
 
-The asynchronous API allows integration into downstream services or direct interaction via browser.
+The asynchronous FastAPI service exposes OpenAPI-compliant endpoints and serves a local interactive chat UI.
 
 #### 🌐 Start the Development Server
 
@@ -201,12 +230,13 @@ The asynchronous API allows integration into downstream services or direct inter
 uv run fastapi dev
 ```
 
-> The application will listen on `http://127.0.0.1:8000`.
+The application will listen on `http://127.0.0.1:8000`.
 
-- **Interactive Web Chat UI:** Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) in your browser.
-  - Select your desired language (`pt-br` or `en`) and click **Carregar Documentos** to batch-ingest all files from `docs/<language>`.
-  - Type questions in the chat box to receive responses with source references and similarity scores.
-- **Interactive Swagger Documentation:** Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+- **Interactive Web Chat UI:** Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) in your browser:
+  - Choose between **Português (`pt-br`)** and **English (`en`)**.
+  - Click **Carregar Documentos** to trigger batch ingestion of all markdown files in the selected language directory.
+  - Ask questions in natural language and receive grounded answers displaying retrieved source excerpts and similarity scores.
+- **Swagger UI Documentation:** Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 - **ReDoc Documentation:** Open [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc).
 
 #### 🚀 Start in Production Mode
@@ -222,33 +252,31 @@ uv run fastapi run
 | Method | Endpoint | Description | Sample Payload |
 | --- | --- | --- | --- |
 | `GET` | `/health` | Service readiness and health status | *None* |
-| `POST` | `/documents/ingest` | Ingest and vectorize a single text document | `{"content": "Text...", "source": "doc.md"}` |
-| `POST` | `/documents/ingest/by-language` | Batch ingest all markdown documents for a language | `{"language": "en"}` |
-| `POST` | `/query` | Semantic search and LLM context-grounded answer | `{"question": "What is the haircut price?", "top_k": 4}` |
+| `POST` | `/documents/ingest` | Ingest and vectorize a single text document (idempotent by source) | `{"content": "Text...", "source": "doc.md"}` |
+| `POST` | `/documents/ingest/by-language` | Batch ingest all markdown documents for a language directory | `{"language": "pt-br"}` |
+| `POST` | `/query` | Semantic search and LLM context-grounded answer generation | `{"question": "Quais os preços dos serviços?", "top_k": 4}` |
 
 ---
 
 ## 🧪 Testing & Code Quality
 
-Strict quality checks are enforced across the repository:
+Strict quality checks are enforced across the repository, covering Domain, Application, Infrastructure, and Presentation layers.
 
 ### Run the Test Suite
-
-Tests cover domain protocols, adapters with mock transports, application use cases, and ASGI E2E integration:
 
 ```bash
 uv run pytest
 ```
 
-### Code Formatting
+> **Note:** Integration tests in `test_pgvector_integration.py` safely isolate their test records using scoped source deletions (`delete_by_source`), never truncating user data in the live database.
+
+### Code Formatting & Linting
 
 ```bash
+# Check and apply formatting (Ruff)
 uv run ruff format .
-```
 
-### Static Analysis & Linting
-
-```bash
+# Static analysis and linting (Ruff)
 uv run ruff check .
 ```
 
@@ -260,7 +288,7 @@ uv run ruff format --check . && uv run ruff check . && uv run pytest
 
 ### Regenerate SDD Models (OpenAPI)
 
-When modifying [openapi.yaml](openapi.yaml), regenerate Pydantic models with:
+When updating [openapi.yaml](openapi.yaml), regenerate the domain models:
 
 ```bash
 uv run datamodel-codegen --input openapi.yaml --output src/domain/models/schemas.py --input-file-type openapi --output-model-type pydantic_v2.BaseModel
@@ -270,18 +298,17 @@ uv run datamodel-codegen --input openapi.yaml --output src/domain/models/schemas
 
 ## 📝 Commit Conventions
 
-All commits adhere to **Conventional Commits** paired with **Gitmoji**:
+All commits strictly follow **Conventional Commits** integrated with **Gitmoji**:
 
-- ✨ `feat:` New features (e.g., `feat(api): add batch language ingest endpoint`)
-- 🐛 `fix:` Bug fixes
-- 📝 `docs:` Documentation updates or contract changes
-- ♻️ `refactor:` Code refactoring without behavior change
-- ✅ `test:` Adding or updating tests
-- 🔧 `chore:` Build scripts, dependencies, or tool configuration
+- ✨ `feat:` A new feature (e.g. `feat(cli): display active vector backend in panels`)
+- 🐛 `fix:` A bug fix (e.g. `fix(pgvector): cast query embedding to vector in cosine distance`)
+- 📝 `docs:` Documentation changes (e.g. `docs: update README with pgvector details`)
+- ♻️ `refactor:` Code changes without functional differences
+- ✅ `test:` Adding or updating unit/integration tests
+- 🔧 `chore:` Build scripts, dependencies, or configuration
 
 ---
 
 ## 📄 License
 
 This project is open-source software licensed under the [MIT License](LICENSE).
-
