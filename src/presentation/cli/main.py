@@ -78,7 +78,8 @@ def ingest(
     """
     if not text and not file:
         console.print(
-            "[bold red]Erro:[/bold red] Forneça um texto via `--text` ou um arquivo via `--file`.",
+            "[bold red]Erro:[/bold red] Forneça um texto via `--text` "
+            "ou um arquivo via `--file`.",
         )
         raise typer.Exit(code=1)
 
@@ -230,18 +231,21 @@ def interactive() -> None:
     Start an interactive session where documents can be ingested and queried
     in memory without resetting between commands.
     """
-    console.print(
-        Panel.fit(
-            "[bold cyan]Modo Interativo RAG Local (In-Memory)[/bold cyan]\n"
-            "Comandos disponíveis:\n"
-            "  [yellow]ingest <arquivo>[/yellow] ou [yellow]ingest -f <arquivo>[/yellow] - Ingestão de arquivo\n"
-            "  [yellow]ingest <texto>[/yellow] ou [yellow]ingest -t <texto>[/yellow]     - Ingestão direta de texto\n"
-            "  [yellow]ask <pergunta>[/yellow]                         - Fazer uma pergunta sobre o contexto\n"
-            "  [yellow]status / count[/yellow]                         - Ver quantidade de chunks indexados\n"
-            "  [yellow]exit / quit[/yellow]                            - Sair da sessão",
-            title="Bem-vindo ao RAG CLI",
-        )
+    panel_text = (
+        "[bold cyan]Modo Interativo RAG Local (In-Memory)[/bold cyan]\n"
+        "Comandos disponíveis:\n"
+        "  [yellow]ingest <arquivo>[/yellow] ou "
+        "[yellow]ingest -f <arquivo>[/yellow] - Ingestão de arquivo\n"
+        "  [yellow]ingest <texto>[/yellow] ou "
+        "[yellow]ingest -t <texto>[/yellow]   - Ingestão de texto\n"
+        "  [yellow]ask <pergunta>[/yellow]                         "
+        "- Fazer uma pergunta sobre o contexto\n"
+        "  [yellow]status / count[/yellow]                         "
+        "- Ver quantidade de chunks indexados\n"
+        "  [yellow]exit / quit[/yellow]                            "
+        "- Sair da sessão"
     )
+    console.print(Panel.fit(panel_text, title="Bem-vindo ao RAG CLI"))
 
     _, repo, ingest_uc, ask_uc = get_adapters()
 
@@ -262,7 +266,8 @@ def interactive() -> None:
             if cmd == "ingest":
                 if not arg:
                     console.print(
-                        "[red]Uso: ingest <arquivo|texto> (ex: ingest docs/pt-br/visao-geral-e-unidades.md)[/red]"
+                        "[red]Uso: ingest <arquivo|texto> "
+                        "(ex: ingest docs/pt-br/visao-geral-e-unidades.md)[/red]"
                     )
                     continue
 
@@ -270,14 +275,15 @@ def interactive() -> None:
                 req = IngestRequest(content=content, source=src_label)
                 res = ingest_uc.execute(req)
                 console.print(
-                    f"[green]✓ Ingestão concluída com sucesso:[/green] "
-                    f"[cyan]{res.chunks_count}[/cyan] chunks indexados de [yellow]{src_label}[/yellow] "
-                    f"(Total no repositório: [bold]{repo.count()}[/bold])"
+                    f"[green]✓ Ingestão concluída:[/green] "
+                    f"[cyan]{res.chunks_count}[/cyan] chunks de "
+                    f"[yellow]{src_label}[/yellow] "
+                    f"(Total: [bold]{repo.count()}[/bold])"
                 )
 
             elif cmd in ("status", "count"):
                 console.print(
-                    f"[cyan]Chunks indexados no momento:[/cyan] [bold]{repo.count()}[/bold]"
+                    f"[cyan]Chunks indexados:[/cyan] [bold]{repo.count()}[/bold]"
                 )
 
             elif cmd == "ask":
@@ -301,15 +307,20 @@ def interactive() -> None:
                         f"[dim]Fontes recuperadas ({len(res.sources)}):[/dim]"
                     )
                     for s in res.sources:
+                        src_str = s.source or "N/A"
                         console.print(
-                            f"  • (score: {s.score:.4f}) [{s.source or 'N/A'}] {s.content[:80]}..."
+                            f"  • (score: {s.score:.4f}) "
+                            f"[{src_str}] {s.content[:70]}..."
                         )
+
                 console.print()
 
             else:
                 console.print(
-                    f"[yellow]Comando desconhecido '{cmd}'. Use 'ingest', 'ask', 'status' ou 'exit'.[/yellow]"
+                    f"[yellow]Comando desconhecido '{cmd}'. "
+                    "Use 'ingest', 'ask', 'status' ou 'exit'.[/yellow]"
                 )
+
         except KeyboardInterrupt, EOFError:
             console.print("\n[dim]Sessão finalizada.[/dim]")
             break
