@@ -12,16 +12,19 @@ from src.domain.interfaces import (
     AsyncLLMGateway,
     AsyncVectorRepository,
 )
-from src.infra.adapters.in_memory_repository import InMemoryVectorAdapter
 from src.infra.adapters.ollama import OllamaAdapter
+from src.infra.adapters.vector_factory import create_vector_repository
 
-# Singleton in-memory vector repository for shared context across requests
-_vector_repository = InMemoryVectorAdapter()
+# Shared vector repository instance for context across requests
+_vector_repository: AsyncVectorRepository | None = None
 _ollama_adapter: OllamaAdapter | None = None
 
 
-def get_vector_repository() -> InMemoryVectorAdapter:
-    """Return the shared in-memory vector repository instance."""
+def get_vector_repository() -> AsyncVectorRepository:
+    """Return the shared vector repository instance."""
+    global _vector_repository
+    if _vector_repository is None:
+        _vector_repository = create_vector_repository()
     return _vector_repository
 
 
@@ -69,7 +72,7 @@ def get_ask_question_use_case(
 
 
 # Dependency Type Aliases following FastAPI best practices
-VectorRepoDep = Annotated[InMemoryVectorAdapter, Depends(get_vector_repository)]
+VectorRepoDep = Annotated[AsyncVectorRepository, Depends(get_vector_repository)]
 OllamaAdapterDep = Annotated[OllamaAdapter, Depends(get_ollama_adapter)]
 BatchIngestUseCaseDep = Annotated[
     AsyncBatchIngestByLanguageUseCase, Depends(get_batch_ingest_use_case)

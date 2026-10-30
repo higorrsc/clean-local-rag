@@ -8,40 +8,43 @@ from rich.panel import Panel
 from rich.table import Table
 
 from src.application.use_cases import AskQuestionUseCase, IngestDocumentsUseCase
+from src.domain.interfaces import VectorRepository
 from src.domain.models import IngestRequest, QueryRequest
-from src.infra.adapters.in_memory_repository import InMemoryVectorAdapter
 from src.infra.adapters.ollama import OllamaAdapter
+from src.infra.adapters.vector_factory import create_vector_repository
 
 app = typer.Typer(
     name="rag-cli",
-    help="Local RAG CLI application powered by Ollama and in-memory vector search.",
+    help="Local RAG CLI application powered by Ollama and vector search.",
     add_completion=False,
 )
 console = Console()
 
-# Singleton in-memory repository instance for CLI session
-in_memory_repo = InMemoryVectorAdapter()
+# Singleton vector repository instance for CLI session
+in_memory_repo: VectorRepository = create_vector_repository()
 
 
-def get_adapters() -> tuple[
+def get_adapters(
+    repo: VectorRepository | None = None,
+) -> tuple[
     OllamaAdapter,
-    InMemoryVectorAdapter,
+    VectorRepository,
     IngestDocumentsUseCase,
     AskQuestionUseCase,
 ]:
     """Composition Root: wires adapters and use cases."""
     embedder_llm = OllamaAdapter()
-    repo = in_memory_repo
+    active_repo = repo if repo is not None else create_vector_repository()
     ingest_use_case = IngestDocumentsUseCase(
         embedding_gateway=embedder_llm,
-        vector_repository=repo,
+        vector_repository=active_repo,
     )
     ask_use_case = AskQuestionUseCase(
         embedding_gateway=embedder_llm,
-        vector_repository=repo,
+        vector_repository=active_repo,
         llm_gateway=embedder_llm,
     )
-    return embedder_llm, repo, ingest_use_case, ask_use_case
+    return embedder_llm, active_repo, ingest_use_case, ask_use_case
 
 
 @app.command()
@@ -232,7 +235,7 @@ def interactive() -> None:
     in memory without resetting between commands.
     """
     panel_text = (
-        "[bold cyan]Modo Interativo RAG Local (In-Memory)[/bold cyan]\n"
+        "[bold cyan]Modo Interativo RAG Local[/bold cyan]\n"
         "Comandos disponíveis:\n"
         "  [yellow]ingest <arquivo>[/yellow] ou "
         "[yellow]ingest -f <arquivo>[/yellow] - Ingestão de arquivo\n"
