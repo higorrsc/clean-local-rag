@@ -48,7 +48,8 @@ clean-local-rag/
 ├── pyproject.toml               # Dependencies and tools managed with uv
 ├── compose.yaml                 # Docker infrastructure (Ollama + PgVector + Auto-pull)
 ├── .env.example                 # Environment variables template
-├── docs/                        # Sample bilingual knowledge base
+├── docs/                        # Sample bilingual knowledge base and media assets
+│   ├── assets/                  # Demo GIFs and screenshots
 │   ├── pt-br/                   # Portuguese documents
 │   └── en/                      # English documents
 ├── src/
@@ -149,6 +150,8 @@ ollama pull qwen3:4b-instruct
 
 The CLI supports both an interactive terminal session and single-shot commands, with explicit backend indicator panels.
 
+![CLI Interactive Demo](docs/assets/demo-cli.gif)
+
 #### 💬 Interactive Session Mode
 
 Launch an interactive session:
@@ -224,6 +227,8 @@ Encerrando sessão interativa...
 
 The asynchronous FastAPI service exposes OpenAPI-compliant endpoints and serves a local interactive chat UI.
 
+![FastAPI Server Demo](docs/assets/demo-api.gif)
+
 #### 🌐 Start the Development Server
 
 ```bash
@@ -236,8 +241,17 @@ The application will listen on `http://127.0.0.1:8000`.
   - Choose between **Português (`pt-br`)** and **English (`en`)**.
   - Click **Carregar Documentos** to trigger batch ingestion of all markdown files in the selected language directory.
   - Ask questions in natural language and receive grounded answers displaying retrieved source excerpts and similarity scores.
+
+| 📥 Ingestão de Documentos | 💬 Chat Interativo |
+| :---: | :---: |
+| ![Web UI Ingestion](docs/assets/demo-web-ui-01.png) | ![Web UI Chat](docs/assets/demo-web-ui-02.png) |
+
 - **Swagger UI Documentation:** Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 - **ReDoc Documentation:** Open [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc).
+
+| 📖 Documentação Swagger | 🔍 Detalhes dos Endpoints | 🧪 Execução de Consultas |
+| :---: | :---: | :---: |
+| ![Swagger UI Overview](docs/assets/demo-web-api-01.png) | ![Swagger Endpoints](docs/assets/demo-web-api-02.png) | ![Swagger Query Execution](docs/assets/demo-web-api-03.png) |
 
 #### 🚀 Start in Production Mode
 
