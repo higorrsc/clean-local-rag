@@ -5,6 +5,18 @@ info:
   description: Single source of truth for Local RAG CLI and REST API contracts.
 
 paths:
+  /health:
+    get:
+      summary: Service readiness and health status check
+      operationId: health_check
+      responses:
+        '200':
+          description: Service is healthy and operational
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
   /documents/ingest:
     post:
       summary: Ingest document text for vector chunking and indexing
@@ -22,6 +34,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IngestResponse'
+
+  /documents/ingest/by-language:
+    post:
+      summary: Batch ingest all markdown documents from a language directory (docs/<language>)
+      operationId: ingest_documents_by_language
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchIngestRequest'
+      responses:
+        '200':
+          description: All documents in language directory successfully indexed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchIngestResponse'
 
   /query:
     post:
@@ -43,6 +73,19 @@ paths:
 
 components:
   schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - version
+      properties:
+        status:
+          type: string
+          description: Health status of the API.
+        version:
+          type: string
+          description: Application version string.
+
     IngestRequest:
       type: object
       required:
@@ -77,6 +120,42 @@ components:
           nullable: true
           description: Optional identifier generated or assigned to the document.
 
+    BatchIngestRequest:
+      type: object
+      required:
+        - language
+      properties:
+        language:
+          type: string
+          description: Language directory code to scan (e.g. 'pt-br' or 'en').
+
+    BatchIngestResponse:
+      type: object
+      required:
+        - files_count
+        - chunks_count
+        - status
+        - language
+        - documents
+      properties:
+        files_count:
+          type: integer
+          description: Total number of markdown files found and ingested.
+        chunks_count:
+          type: integer
+          description: Total number of chunks generated and stored.
+        status:
+          type: string
+          description: Overall status of the batch ingestion.
+        language:
+          type: string
+          description: Language code processed.
+        documents:
+          type: array
+          items:
+            type: string
+          description: Names of documents successfully indexed.
+
     QueryRequest:
       type: object
       required:
@@ -87,7 +166,7 @@ components:
           description: Question or query text to ask the RAG pipeline.
         top_k:
           type: integer
-          default: 3
+          default: 4
           minimum: 1
           description: Number of most similar document chunks to retrieve as context.
 
