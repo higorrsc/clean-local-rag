@@ -2,6 +2,7 @@
   "cSpell.language": "en,pt-BR",
   "cSpell.words": [
     "aconn",
+    "adelete",
     "aensure",
     "aexecute",
     "agenerate",
@@ -17,6 +18,7 @@
     "healthcheck",
     "HNSW",
     "httpx",
+    "ingestions",
     "isready",
     "linalg",
     "nomic",
