@@ -1,6 +1,12 @@
 import httpx
+import pytest
 
-from src.domain.interfaces import EmbeddingGateway, LLMGateway
+from src.domain.interfaces import (
+    AsyncEmbeddingGateway,
+    AsyncLLMGateway,
+    EmbeddingGateway,
+    LLMGateway,
+)
 from src.infra.adapters.ollama import OllamaAdapter
 
 
@@ -8,6 +14,8 @@ def test_ollama_adapter_implements_protocols():
     adapter = OllamaAdapter()
     assert isinstance(adapter, EmbeddingGateway)
     assert isinstance(adapter, LLMGateway)
+    assert isinstance(adapter, AsyncEmbeddingGateway)
+    assert isinstance(adapter, AsyncLLMGateway)
 
 
 def test_generate_embeddings_modern_endpoint():
@@ -79,3 +87,33 @@ def test_generate_response_chat_endpoint():
         system_prompt="You are a helpful RAG assistant.",
     )
     assert answer == "RAG stands for Retrieval-Augmented Generation."
+
+
+@pytest.mark.anyio
+async def test_async_generate_embeddings_and_response():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/embed":
+            return httpx.Response(
+                200,
+                json={"embeddings": [[0.1, 0.2], [0.3, 0.4]]},
+            )
+        elif request.url.path == "/api/chat":
+            return httpx.Response(
+                200,
+                json={"message": {"content": "Async response"}},
+            )
+        return httpx.Response(404)
+
+    async_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    adapter = OllamaAdapter(async_client=async_client)
+
+    embeddings = await adapter.agenerate_embeddings(["a", "b"])
+    assert embeddings == [[0.1, 0.2], [0.3, 0.4]]
+
+    single = await adapter.agenerate_embedding("a")
+    assert single == [0.1, 0.2]
+
+    response = await adapter.agenerate_response("Hello")
+    assert response == "Async response"
+
+    await adapter.aclose()

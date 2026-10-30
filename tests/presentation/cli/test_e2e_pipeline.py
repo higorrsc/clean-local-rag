@@ -4,10 +4,10 @@ import httpx
 from typer.testing import CliRunner
 
 from src.application.use_cases import AskQuestionUseCase, IngestDocumentsUseCase
-from src.cli.main import app, in_memory_repo
 from src.domain.models import IngestRequest, QueryRequest
 from src.infra.adapters.in_memory_repository import InMemoryVectorAdapter
 from src.infra.adapters.ollama import OllamaAdapter
+from src.presentation.cli.main import app, in_memory_repo
 
 runner = CliRunner()
 
@@ -40,7 +40,10 @@ def test_end_to_end_in_memory_rag_pipeline():
                 200,
                 json={
                     "message": {
-                        "content": "Clean Architecture organiza o software em camadas concêntricas."
+                        "content": (
+                            "Clean Architecture organiza o software "
+                            "em camadas concêntricas."
+                        )
                     }
                 },
             )
@@ -66,10 +69,14 @@ def test_end_to_end_in_memory_rag_pipeline():
     # 1. Ingest
     ingest_res = ingest_use_case.execute(
         IngestRequest(
-            content="Documento sobre Clean Architecture. Separação de conceitos em camadas independentes.",
+            content=(
+                "Documento sobre Clean Architecture. "
+                "Separação de conceitos em camadas independentes."
+            ),
             source="clean_arch.txt",
         )
     )
+
     assert ingest_res.status == "success"
     assert ingest_res.chunks_count >= 1
     assert repo.count() == ingest_res.chunks_count
@@ -109,8 +116,8 @@ def test_cli_ingest_and_ask_commands(monkeypatch):
 
     mock_client = httpx.Client(transport=httpx.MockTransport(mock_handler))
 
-    # Monkeypatch get_adapters in cli.main
-    import src.cli.main as cli_main
+    # Monkeypatch get_adapters in presentation.cli.main
+    import src.presentation.cli.main as cli_main
 
     def patched_get_adapters():
         adapter = OllamaAdapter(client=mock_client)

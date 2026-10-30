@@ -62,3 +62,31 @@ def test_ingest_documents_use_case_empty_validation():
 
     with pytest.raises(ValueError, match="cannot be empty"):
         use_case.execute(IngestRequest(content="   "))
+
+
+@pytest.mark.anyio
+async def test_ingest_documents_use_case_async():
+    class FakeAsyncEmbedder:
+        async def agenerate_embeddings(self, texts: list[str]) -> list[list[float]]:
+            return [[0.1, 0.2, 0.3] for _ in texts]
+
+    class FakeAsyncRepo:
+        def __init__(self) -> None:
+            self.chunks: list[DocumentChunk] = []
+
+        async def asave_chunks(self, chunks: list[DocumentChunk]) -> None:
+            self.chunks.extend(chunks)
+
+    embedder = FakeAsyncEmbedder()
+    repo = FakeAsyncRepo()
+    use_case = IngestDocumentsUseCase(embedder, repo, chunk_size=100)
+
+    request = IngestRequest(
+        content="This is an async test document for ingestion.",
+        source="async_doc.txt",
+    )
+    response = await use_case.aexecute(request)
+
+    assert response.status == "success"
+    assert response.chunks_count >= 1
+    assert len(repo.chunks) == response.chunks_count

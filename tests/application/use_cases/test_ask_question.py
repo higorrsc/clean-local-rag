@@ -82,3 +82,43 @@ def test_ask_question_empty_query_raises():
 
     with pytest.raises(ValueError, match="cannot be empty"):
         use_case.execute(QueryRequest(question="   "))
+
+
+@pytest.mark.anyio
+async def test_ask_question_use_case_async():
+    class FakeAsyncEmbedder:
+        async def agenerate_embedding(self, text: str) -> list[float]:
+            return [0.1, 0.2, 0.3]
+
+    class FakeAsyncLLM:
+        async def agenerate_response(
+            self, prompt: str, system_prompt: str | None = None
+        ) -> str:
+            return "Async answer from LLM."
+
+    class FakeAsyncRepo:
+        def __init__(self) -> None:
+            self.chunks: list[DocumentChunk] = []
+
+        async def asearch_similar(
+            self, query_embedding: list[float], top_k: int = 4
+        ) -> list[tuple[DocumentChunk, float]]:
+            return [(c, 0.98) for c in self.chunks[:top_k]]
+
+    embedder = FakeAsyncEmbedder()
+    llm = FakeAsyncLLM()
+    repo = FakeAsyncRepo()
+    repo.chunks.append(
+        DocumentChunk(
+            content="Async context content",
+            embedding=[0.1, 0.2, 0.3],
+            source="async.txt",
+        )
+    )
+
+    use_case = AskQuestionUseCase(embedder, repo, llm)
+    res = await use_case.aexecute(QueryRequest(question="Async question?", top_k=1))
+
+    assert res.answer == "Async answer from LLM."
+    assert len(res.sources) == 1
+    assert res.sources[0].source == "async.txt"

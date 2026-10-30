@@ -1,10 +1,37 @@
 from src.domain.models import (
+    BatchIngestRequest,
+    BatchIngestResponse,
+    HealthResponse,
     IngestRequest,
     IngestResponse,
     QueryRequest,
     QueryResponse,
     SourceChunk,
 )
+
+
+def test_health_response_model():
+    res = HealthResponse(status="ok", version="0.1.0")
+    assert res.status == "ok"
+    assert res.version == "0.1.0"
+
+
+def test_batch_ingest_models():
+    req = BatchIngestRequest(language="pt-br")
+    assert req.language == "pt-br"
+
+    res = BatchIngestResponse(
+        files_count=3,
+        chunks_count=18,
+        status="success",
+        language="pt-br",
+        documents=["visao-geral-e-unidades.md", "servicos-e-precos.md"],
+    )
+    assert res.files_count == 3
+    assert res.chunks_count == 18
+    assert res.status == "success"
+    assert res.language == "pt-br"
+    assert len(res.documents) == 2
 
 
 def test_ingest_request_model():

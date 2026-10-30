@@ -1,6 +1,6 @@
 import pytest
 
-from src.cli.main import parse_interactive_ingest
+from src.presentation.cli.main import parse_interactive_ingest
 
 
 def test_parse_interactive_ingest_direct_text():
