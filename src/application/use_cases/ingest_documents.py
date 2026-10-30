@@ -1,7 +1,12 @@
 import uuid
 
 from src.domain.entities import DocumentChunk
-from src.domain.interfaces import EmbeddingGateway, VectorRepository
+from src.domain.interfaces import (
+    AsyncEmbeddingGateway,
+    AsyncVectorRepository,
+    EmbeddingGateway,
+    VectorRepository,
+)
 from src.domain.models import IngestRequest, IngestResponse
 
 
@@ -12,7 +17,7 @@ def chunk_text(
 ) -> list[str]:
     """
     Splits text into chunks of roughly `chunk_size` characters with `chunk_overlap`.
-    Prioritizes paragraph breaks (\n\n) and line breaks (\n) to keep markdown sections intact.
+    Prioritizes paragraph breaks (\n\n) and line breaks (\n) for clean sections.
     """
     clean_text = text.strip()
     if not clean_text:
@@ -71,8 +76,8 @@ class IngestDocumentsUseCase:
 
     def __init__(
         self,
-        embedding_gateway: EmbeddingGateway,
-        vector_repository: VectorRepository,
+        embedding_gateway: EmbeddingGateway | AsyncEmbeddingGateway,
+        vector_repository: VectorRepository | AsyncVectorRepository,
         chunk_size: int = 1000,
         chunk_overlap: int = 150,
     ) -> None:
@@ -98,9 +103,11 @@ class IngestDocumentsUseCase:
         # Vectorize chunks
         embeddings = self.embedding_gateway.generate_embeddings(text_chunks)
         if len(embeddings) != len(text_chunks):
-            raise RuntimeError(
-                f"Mismatch: expected {len(text_chunks)} embeddings, got {len(embeddings)}."
+            msg = (
+                f"Mismatch: expected {len(text_chunks)} embeddings, "
+                f"got {len(embeddings)}."
             )
+            raise RuntimeError(msg)
 
         doc_id = str(uuid.uuid4())
         chunks: list[DocumentChunk] = []
@@ -118,6 +125,57 @@ class IngestDocumentsUseCase:
 
         # Persist chunks in repository
         self.vector_repository.save_chunks(chunks)
+
+        return IngestResponse(
+            chunks_count=len(chunks),
+            status="success",
+            document_id=doc_id,
+        )
+
+    async def aexecute(self, request: IngestRequest) -> IngestResponse:
+        content = (request.content or "").strip()
+        if not content:
+            raise ValueError("Document content cannot be empty.")
+
+        text_chunks = chunk_text(
+            content,
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+        )
+
+        if not text_chunks:
+            raise ValueError("No valid chunks could be extracted from document.")
+
+        if hasattr(self.embedding_gateway, "agenerate_embeddings"):
+            embeddings = await self.embedding_gateway.agenerate_embeddings(text_chunks)
+        else:
+            embeddings = self.embedding_gateway.generate_embeddings(text_chunks)
+
+        if len(embeddings) != len(text_chunks):
+            msg = (
+                f"Mismatch: expected {len(text_chunks)} embeddings, "
+                f"got {len(embeddings)}."
+            )
+            raise RuntimeError(msg)
+
+        doc_id = str(uuid.uuid4())
+        chunks: list[DocumentChunk] = []
+
+        for text, embedding in zip(text_chunks, embeddings, strict=True):
+            chunks.append(
+                DocumentChunk(
+                    content=text,
+                    embedding=embedding,
+                    document_id=doc_id,
+                    source=request.source,
+                    metadata=request.metadata or {},
+                )
+            )
+
+        if hasattr(self.vector_repository, "asave_chunks"):
+            await self.vector_repository.asave_chunks(chunks)
+        else:
+            self.vector_repository.save_chunks(chunks)
 
         return IngestResponse(
             chunks_count=len(chunks),
