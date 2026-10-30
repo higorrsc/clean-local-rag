@@ -1,13 +1,14 @@
 import numpy as np
 
 from src.domain.entities import DocumentChunk
-from src.domain.interfaces import VectorRepository
+from src.domain.interfaces import AsyncVectorRepository, VectorRepository
 
 
-class InMemoryVectorAdapter(VectorRepository):
+class InMemoryVectorAdapter(VectorRepository, AsyncVectorRepository):
     """
     In-memory implementation of VectorRepository using NumPy for cosine similarity.
     Allows local testing and quick evaluation without external database dependencies.
+    Implements both synchronous and asynchronous contracts.
     """
 
     def __init__(self) -> None:
@@ -17,10 +18,14 @@ class InMemoryVectorAdapter(VectorRepository):
         """Persist document chunks into memory."""
         self._chunks.extend(chunks)
 
+    async def asave_chunks(self, chunks: list[DocumentChunk]) -> None:
+        """Persist document chunks into memory asynchronously."""
+        self.save_chunks(chunks)
+
     def search_similar(
         self,
         query_embedding: list[float],
-        top_k: int = 3,
+        top_k: int = 4,
     ) -> list[tuple[DocumentChunk, float]]:
         """
         Calculates cosine similarity between the query embedding and stored chunks,
@@ -52,6 +57,17 @@ class InMemoryVectorAdapter(VectorRepository):
 
         results = [(self._chunks[idx], float(similarities[idx])) for idx in top_indices]
         return results
+
+    async def asearch_similar(
+        self,
+        query_embedding: list[float],
+        top_k: int = 4,
+    ) -> list[tuple[DocumentChunk, float]]:
+        """
+        Calculates cosine similarity asynchronously,
+        returning top_k tuples sorted descending.
+        """
+        return self.search_similar(query_embedding=query_embedding, top_k=top_k)
 
     def clear(self) -> None:
         """Clear all stored chunks."""
