@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,6 +10,7 @@ class Settings(BaseSettings):
 
     # Database configuration
     pg_dsn: str = "postgresql://dev:dev@localhost:5432/rag_db"
+    vector_backend: Literal["memory", "pgvector"] = "memory"
 
     # Ollama configuration
     ollama_base_url: str = "http://localhost:11434/api"
