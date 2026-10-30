@@ -1,8 +1,11 @@
 {
   "cSpell.language": "en,pt-BR",
   "cSpell.words": [
+    "aconn",
+    "aensure",
     "aexecute",
     "agenerate",
+    "ainit",
     "asave",
     "asearch",
     "ASGI",
@@ -12,6 +15,7 @@
     "FAISS",
     "fastapi",
     "healthcheck",
+    "HNSW",
     "httpx",
     "isready",
     "linalg",
