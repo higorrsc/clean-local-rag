@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rag_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: rag_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d rag_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: rag_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_storage:/root/.ollama
+
+  ollama-init:
+    image: curlimages/curl:latest
+    container_name: rag_ollama_init
+    depends_on:
+      - ollama
+    entrypoint: >
+      /bin/sh -c "
+        echo 'Waiting for Ollama service...';
+        while ! curl -s http://ollama:11434/api/tags > /dev/null; do
+          sleep 2;
+        done;
+        echo 'Ollama is up. Pulling nomic-embed-text...';
+        curl -s -X POST http://ollama:11434/api/pull -d '{\"model\": \"nomic-embed-text\"}';
+        echo '';
+        echo 'Pulling qwen3:4b-instruct...';
+        curl -s -X POST http://ollama:11434/api/pull -d '{\"model\": \"qwen3:4b-instruct\"}';
+        echo '';
+        echo 'Models pulled successfully!';
+      "
+    restart: "no"
+
+volumes:
+  pgdata:
+  ollama_storage:
