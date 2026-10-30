@@ -1,102 +1,102 @@
 # 🧠 Local RAG CLI & Web API
 
-Aplicação modular de **RAG (Retrieval-Augmented Generation) 100% Local, Privada e Segura**, desenvolvida em Python segundo os princípios de **Clean Architecture**, **Domain-Driven Design (DDD)**, **SOLID** e **Spec-Driven Design (SDD)**.
+A modular, **100% Local, Private, and Secure RAG (Retrieval-Augmented Generation)** application built with Python according to **Clean Architecture**, **Domain-Driven Design (DDD)**, **SOLID**, and **Spec-Driven Design (SDD)** principles.
 
 ---
 
-## 📌 Visão Geral
+## 📌 Overview
 
-O projeto implementa uma solução completa de busca semântica e geração de respostas aumentadas por contexto utilizando modelos locais através do **Ollama** e vetores com **Cosine Similarity** em memória e suporte a **pgvector**.
+This project provides an end-to-end local semantic search and context-grounded answer generation solution using local LLM models via **Ollama** and vector similarity with **Cosine Similarity** in memory, with support for **pgvector**.
 
-### ✨ Principais Características
+### ✨ Key Features
 
-- **100% Local & Seguro:** Sem dependência de APIs externas de LLMs (como OpenAI ou Anthropic); seus dados nunca saem da sua máquina.
-- **Sem Frameworks Opacos:** Sem LangChain ou LlamaIndex. Orquestração, construção de prompts e estratégias de chunking implementadas manualmente com total controle e transparência.
-- **Spec-Driven Design (SDD):** Contratos definidos estritamente em [openapi.yaml](openapi.yaml) como única fonte da verdade, com modelos Pydantic gerados automaticamente via `datamodel-code-generator`.
-- **Apresentação Dupla (CLI & Web API):**
-  - **CLI Interativo & Linha de Comando:** Interface de terminal moderna construída com **Typer** e **Rich**.
-  - **REST API & Web UI Interativa:** Servidor assíncrono construído com **FastAPI**, documentação Swagger automática e interface de chat via navegador sem dependências externas.
-- **Ingestão em Lote por Idioma:** Opção de ingestão automática de todos os documentos markdown organizados por pasta de idioma (`docs/<language>/*.md`).
-- **Base de Conhecimento Bilíngue de Exemplo:** Exemplos práticos em português (`docs/pt-br/`) e inglês (`docs/en/`) sobre uma rede de barbearias com diferentes unidades e serviços.
+- **100% Local & Secure:** No reliance on external LLM APIs (such as OpenAI or Anthropic); your data never leaves your local environment.
+- **No Opaque Frameworks:** Free from LangChain or LlamaIndex abstractions. Orchestration, prompt construction, and chunking strategies are implemented manually with full control and transparency.
+- **Spec-Driven Design (SDD):** Contracts strictly defined in [openapi.yaml](openapi.yaml) as the single source of truth, with Pydantic models automatically generated via `datamodel-code-generator`.
+- **Dual Presentation Layer (CLI & Web API):**
+  - **Interactive & Single-Command CLI:** Built with **Typer** and **Rich**.
+  - **Asynchronous REST API & Web UI:** Built with **FastAPI**, featuring automatic Swagger documentation and an interactive browser chat interface with zero external CDN dependencies.
+- **Language-Based Batch Ingestion:** Ability to automatically scan and ingest all markdown files grouped in language directories (`docs/<language>/*.md`).
+- **Bilingual Knowledge Base Included:** Practical barbershop chain examples provided in Portuguese (`docs/pt-br/`) and English (`docs/en/`).
 
 ---
 
-## 🏛️ Arquitetura do Software
+## 🏛️ Architecture & Design Principles
 
-A aplicação segue rigorosamente as fronteiras concêntricas da **Clean Architecture**:
+The application strictly enforces concentric boundaries defined by **Clean Architecture**:
 
 ```text
 Presentation (CLI / Typer, REST API & Web UI / FastAPI)
      ↓
-Application (Use Cases: Ingestão, Consulta Semântica, Batch por Idioma)
+Application (Use Cases: Ingestion, Semantic Query, Batch by Language)
      ↓
-Domain (Entities, Protocols, Modelos SDD OpenAPI)
+Domain (Entities, Protocols, OpenAPI-generated Models)
      ↑
-Infrastructure (Ollama via HTTPX, Repositório Vetorial em Memória / PgVector via Psycopg)
+Infrastructure (Ollama via HTTPX, In-Memory Vector Repository / PgVector via Psycopg)
 ```
 
-### 📂 Estrutura de Diretórios
+### 📂 Directory Structure
 
 ```text
 rag_project/
-├── openapi.yaml                 # Contrato da API (Single Source of Truth)
-├── pyproject.toml               # Dependências e ferramentas gerenciadas com uv
-├── compose.yaml                 # Infraestrutura Docker (Ollama + PgVector)
-├── .env.example                 # Modelo de variáveis de ambiente
-├── docs/                        # Base de conhecimento de exemplo (pt-br e en)
-│   ├── pt-br/                   # Documentos em Português
-│   └── en/                      # Documentos em Inglês
+├── openapi.yaml                 # OpenAPI specification (Single Source of Truth)
+├── pyproject.toml               # Dependencies and tools managed with uv
+├── compose.yaml                 # Docker infrastructure (Ollama + PgVector)
+├── .env.example                 # Environment variables template
+├── docs/                        # Sample bilingual knowledge base
+│   ├── pt-br/                   # Portuguese documents
+│   └── en/                      # English documents
 ├── src/
-│   ├── config/                  # Configurações centralizadas com pydantic-settings
-│   ├── domain/                  # Núcleo de domínio (Entities, Interfaces e Modelos SDD)
-│   │   ├── entities/            # Entidade DocumentChunk
-│   │   ├── interfaces/          # Protocolos (Gateways de Embeddings, LLM e Repositório)
-│   │   └── models/              # Modelos Pydantic gerados a partir do openapi.yaml
-│   ├── application/             # Casos de uso da orquestração RAG
-│   │   └── use_cases/           # Ingestão individual, busca semântica e batch por idioma
-│   ├── infra/                   # Adaptadores de infraestrutura
+│   ├── config/                  # Centralized settings via pydantic-settings
+│   ├── domain/                  # Domain core (Entities, Interfaces, and SDD Models)
+│   │   ├── entities/            # DocumentChunk entity
+│   │   ├── interfaces/          # Protocols (Embedding, LLM, and Vector Repositories)
+│   │   └── models/              # Pydantic models generated from openapi.yaml
+│   ├── application/             # RAG orchestration use cases
+│   │   └── use_cases/           # Single ingest, semantic ask, and language batch ingest
+│   ├── infra/                   # Infrastructure adapters
 │   │   └── adapters/            # OllamaAdapter (HTTPX sync/async), InMemoryVectorAdapter
-│   └── presentation/            # Camada de apresentação
-│       ├── cli/                 # Interface Typer (comandos pontuais e modo interativo)
-│       └── api/                 # Web API FastAPI e interface gráfica de chat
-└── tests/                       # Suíte de testes segregada espelhando o src/
-    ├── domain/                  # Testes de entidades e contratos de domínio
-    ├── infra/                   # Testes de adaptadores com mocks HTTP
-    ├── application/             # Testes unitários dos use cases
-    └── presentation/            # Testes ponta a ponta do CLI e API FastAPI
+│   └── presentation/            # Presentation layer
+│       ├── cli/                 # Typer CLI application (interactive & command modes)
+│       └── api/                 # FastAPI Web API and chat UI
+└── tests/                       # Segregated test suite mirroring src/
+    ├── domain/                  # Entity and protocol check tests
+    ├── infra/                   # Adapter tests with mocked HTTP transports
+    ├── application/             # Unit tests for use cases
+    └── presentation/            # End-to-end tests for CLI and FastAPI ASGI app
 ```
 
 ---
 
-## 📋 Pré-requisitos
+## 📋 Prerequisites
 
 - **Python:** `>= 3.15`
-- **Gerenciador de Pacotes:** [uv](https://github.com/astral-sh/uv) (rápido e determinístico)
-- **Ollama:** Instalado localmente ou executado via Docker com os modelos:
-  - `nomic-embed-text` (geração de embeddings com 768 dimensões)
-  - `qwen3:4b-instruct` (modelo LLM instruct para respostas contextualizadas)
-- **Docker & Docker Compose** (opcional, para rodar a stack completa)
+- **Package Manager:** [uv](https://github.com/astral-sh/uv) (fast, deterministic)
+- **Ollama:** Installed locally or run via Docker with the following models:
+  - `nomic-embed-text` (768-dimensional embedding generation)
+  - `qwen3:4b-instruct` (instruction-tuned LLM for context-grounded reasoning)
+- **Docker & Docker Compose** (optional, to run the complete containerized stack)
 
 ---
 
-## 🚀 Instalação e Configuração
+## 🚀 Installation & Setup
 
-### 1. Clonar o Repositório
+### 1. Clone the Repository
 
 ```bash
-git clone <url-do-repositorio>
+git clone <repository-url>
 cd rag-cli
 ```
 
-### 2. Configurar o Ambiente
+### 2. Configure Environment Variables
 
-Copie o template de variáveis de ambiente:
+Copy the environment variables template:
 
 ```bash
 cp .env.example .env
 ```
 
-Edite o arquivo `.env` se necessário. Por padrão, ele vem configurado para:
+Edit `.env` if necessary. Defaults are preconfigured for local use:
 
 ```dotenv
 PG_DSN=postgresql://dev:dev@localhost:5432/rag_db
@@ -105,24 +105,24 @@ EMBED_MODEL=nomic-embed-text:latest
 CHAT_MODEL=qwen3:4b-instruct
 ```
 
-### 3. Instalar Dependências
+### 3. Install Dependencies
 
-Utilizando o `uv`:
+Using `uv`:
 
 ```bash
 uv sync
 ```
 
-### 4. Inicializar os Modelos no Ollama
+### 4. Pull Models in Ollama
 
-Se você já tiver o Ollama instalado no sistema operacional:
+If you have Ollama running locally on your host:
 
 ```bash
 ollama pull nomic-embed-text
 ollama pull qwen3:4b-instruct
 ```
 
-Ou, alternativamente, inicie os serviços via Docker Compose (que já baixa os modelos automaticamente):
+Alternatively, start the complete stack with Docker Compose (which pulls models automatically on startup):
 
 ```bash
 docker compose up -d
@@ -130,32 +130,32 @@ docker compose up -d
 
 ---
 
-## 💻 Como Executar
+## 💻 Usage
 
-### 1. Modo CLI (Linha de Comando)
+### 1. CLI (Command-Line Interface)
 
-O CLI oferece modo interativo com sessão contínua na memória ou execução de comandos diretos.
+The CLI provides both an interactive in-memory session mode and direct single commands.
 
-#### 💬 Modo Interativo (Recomendado para testes no terminal)
+#### 💬 Interactive Session Mode (Recommended for Terminal Testing)
 
-Permite carregar documentos e fazer perguntas sequenciais mantendo os chunks indexados:
+Maintains indexed chunks across sequential prompts:
 
 ```bash
 uv run python -m src.presentation.cli interactive
 ```
 
-Dentro da sessão interativa:
+Inside the interactive session:
 
 ```text
-rag-cli> ingest docs/pt-br/visao-geral-e-unidades.md
-✓ Ingestão concluída com sucesso: 7 chunks indexados de visao-geral-e-unidades.md (Total: 7)
+rag-cli> ingest docs/en/overview-and-branches.md
+✓ Ingestão concluída: 7 chunks de overview-and-branches.md (Total: 7)
 
-rag-cli> ingest docs/pt-br/servicos-e-precos.md
-✓ Ingestão concluída com sucesso: 6 chunks indexados de servicos-e-precos.md (Total: 13)
+rag-cli> ingest docs/en/services-and-pricing.md
+✓ Ingestão concluída: 6 chunks de services-and-pricing.md (Total: 13)
 
-rag-cli> ask Qual unidade é exclusiva para mulheres e quais serviços ela oferece?
+rag-cli> ask Which branch is exclusively dedicated to women and what services does it offer?
 Resposta:
-A unidade exclusiva para o público feminino é o Studio Femme, que oferece serviços especializados...
+The branch exclusively dedicated to women is the Studio Femme branch, offering specialized salon services...
 
 rag-cli> status
 Chunks indexados: 13
@@ -163,27 +163,27 @@ Chunks indexados: 13
 rag-cli> exit
 ```
 
-#### ⚡ Comandos Diretos da CLI
+#### ⚡ Direct Single Commands
 
-- **Ingestão direta de texto:**
-
-  ```bash
-  uv run python -m src.presentation.cli ingest --text "A Barbearia Imperial foi fundada em 2018." --source "historia.txt"
-  ```
-
-- **Ingestão de arquivo:**
+- **Ingest text directly:**
 
   ```bash
-  uv run python -m src.presentation.cli ingest --file docs/pt-br/visao-geral-e-unidades.md
+  uv run python -m src.presentation.cli ingest --text "Imperial Barbershop was founded in 2018." --source "history.txt"
   ```
 
-- **Fazer uma pergunta pontual:**
+- **Ingest a document file:**
 
   ```bash
-  uv run python -m src.presentation.cli ask "Quais são as unidades disponíveis?"
+  uv run python -m src.presentation.cli ingest --file docs/en/overview-and-branches.md
   ```
 
-- **Acessar a ajuda dos comandos:**
+- **Ask a question:**
+
+  ```bash
+  uv run python -m src.presentation.cli ask "What are the available branches?"
+  ```
+
+- **Display help:**
 
   ```bash
   uv run python -m src.presentation.cli --help
@@ -191,25 +191,25 @@ rag-cli> exit
 
 ---
 
-### 2. Modo Web API (FastAPI) & Interface Gráfica
+### 2. Web API (FastAPI) & Interactive Web UI
 
-A API assíncrona permite integrar o RAG a serviços externos ou interagir diretamente via navegador.
+The asynchronous API allows integration into downstream services or direct interaction via browser.
 
-#### 🌐 Iniciar o Servidor de Desenvolvimento
+#### 🌐 Start the Development Server
 
 ```bash
 uv run fastapi dev
 ```
 
-> O servidor iniciará em `http://127.0.0.1:8000`.
+> The application will listen on `http://127.0.0.1:8000`.
 
-- **Interface Gráfica de Chat:** Acesse [http://127.0.0.1:8000/](http://127.0.0.1:8000/) no seu navegador.
-  - Selecione o idioma desejado (`pt-br` ou `en`) e clique em **Carregar Documentos** para indexar em lote todos os arquivos da pasta correspondente (`docs/<language>`).
-  - Digite sua pergunta no console de chat para obter a resposta gerada com as fontes e escores de similaridade associados.
-- **Documentação Interativa Swagger (OpenAPI):** Acesse [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
-- **Documentação ReDoc:** Acesse [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc).
+- **Interactive Web Chat UI:** Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) in your browser.
+  - Select your desired language (`pt-br` or `en`) and click **Carregar Documentos** to batch-ingest all files from `docs/<language>`.
+  - Type questions in the chat box to receive responses with source references and similarity scores.
+- **Interactive Swagger Documentation:** Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+- **ReDoc Documentation:** Open [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc).
 
-#### 🚀 Iniciar em Modo Produção
+#### 🚀 Start in Production Mode
 
 ```bash
 uv run fastapi run
@@ -217,50 +217,50 @@ uv run fastapi run
 
 ---
 
-## 📡 Endpoints da API REST
+## 📡 REST API Endpoints
 
-| Método | Endpoint | Descrição | Exemplo de Payload |
+| Method | Endpoint | Description | Sample Payload |
 | --- | --- | --- | --- |
-| `GET` | `/health` | Checagem de integridade e versão da API | *Nenhum* |
-| `POST` | `/documents/ingest` | Ingestão e vetorização de texto individual | `{"content": "Texto...", "source": "doc.md"}` |
-| `POST` | `/documents/ingest/by-language` | Ingestão em lote de todos os arquivos de um idioma | `{"language": "pt-br"}` |
-| `POST` | `/query` | Busca semântica e geração de resposta com LLM | `{"question": "Qual é o preço do corte?", "top_k": 4}` |
+| `GET` | `/health` | Service readiness and health status | *None* |
+| `POST` | `/documents/ingest` | Ingest and vectorize a single text document | `{"content": "Text...", "source": "doc.md"}` |
+| `POST` | `/documents/ingest/by-language` | Batch ingest all markdown documents for a language | `{"language": "en"}` |
+| `POST` | `/query` | Semantic search and LLM context-grounded answer | `{"question": "What is the haircut price?", "top_k": 4}` |
 
 ---
 
-## 🧪 Qualidade de Código e Testes
+## 🧪 Testing & Code Quality
 
-O projeto adota padrões rígidos de qualidade:
+Strict quality checks are enforced across the repository:
 
-### Execução dos Testes
+### Run the Test Suite
 
-A suíte de testes cobre testes de contratos de domínio, adaptadores, use cases e integrações ponta a ponta (E2E) para CLI e ASGI:
+Tests cover domain protocols, adapters with mock transports, application use cases, and ASGI E2E integration:
 
 ```bash
 uv run pytest
 ```
 
-### Formatação de Código
+### Code Formatting
 
 ```bash
 uv run ruff format .
 ```
 
-### Análise Estática (Linter)
+### Static Analysis & Linting
 
 ```bash
 uv run ruff check .
 ```
 
-### Verificação Completa Pré-Commit
+### Complete Pre-Commit Validation
 
 ```bash
 uv run ruff format --check . && uv run ruff check . && uv run pytest
 ```
 
-### Regeneração de Modelos SDD (OpenAPI)
+### Regenerate SDD Models (OpenAPI)
 
-Se o contrato [openapi.yaml](openapi.yaml) for alterado, regenere os modelos Pydantic com:
+When modifying [openapi.yaml](openapi.yaml), regenerate Pydantic models with:
 
 ```bash
 uv run datamodel-codegen --input openapi.yaml --output src/domain/models/schemas.py --input-file-type openapi --output-model-type pydantic_v2.BaseModel
@@ -268,19 +268,19 @@ uv run datamodel-codegen --input openapi.yaml --output src/domain/models/schemas
 
 ---
 
-## 📝 Padrão de Commits
+## 📝 Commit Conventions
 
-Todos os commits devem seguir a convenção de **Conventional Commits** e **Gitmoji**:
+All commits adhere to **Conventional Commits** paired with **Gitmoji**:
 
-- ✨ `feat:` Novas funcionalidades (ex: `feat(api): add batch language ingest endpoint`)
-- 🐛 `fix:` Correção de bugs
-- 📝 `docs:` Atualizações na documentação ou contratos
-- ♻️ `refactor:` Refatoração de código sem alteração funcional
-- ✅ `test:` Criação ou ajuste de testes
-- 🔧 `chore:` Atualizações de build, dependências ou ferramentas
+- ✨ `feat:` New features (e.g., `feat(api): add batch language ingest endpoint`)
+- 🐛 `fix:` Bug fixes
+- 📝 `docs:` Documentation updates or contract changes
+- ♻️ `refactor:` Code refactoring without behavior change
+- ✅ `test:` Adding or updating tests
+- 🔧 `chore:` Build scripts, dependencies, or tool configuration
 
 ---
 
-## 📄 Licença
+## 📄 License
 
-Este projeto é desenvolvido para fins de portfólio e estudos arquiteturais avançados de RAG Local em Python. Sinta-se livre para utilizar e estender conforme necessário.
+This project is created for portfolio and advanced architectural reference for Local RAG in Python. Feel free to use and adapt as needed.
