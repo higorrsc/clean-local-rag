@@ -117,3 +117,10 @@ async def test_async_generate_embeddings_and_response():
     assert response == "Async response"
 
     await adapter.aclose()
+
+
+def test_ollama_adapter_custom_timeout():
+    adapter = OllamaAdapter(timeout=45.0)
+    assert adapter.client.timeout.read == 45.0
+    assert adapter.async_client.timeout.read == 45.0
+    adapter.close()

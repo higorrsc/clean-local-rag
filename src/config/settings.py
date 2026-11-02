@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434/api"
     embed_model: str = "nomic-embed-text:latest"
     chat_model: str = "qwen3:4b-instruct"
+    ollama_timeout: float = 180.0
 
     # Configuration for reading the .env file
     model_config = SettingsConfigDict(

@@ -7,6 +7,7 @@ def test_settings_defaults():
     assert s.pg_dsn.startswith("postgresql://")
     assert s.embed_model == "nomic-embed-text:latest"
     assert s.chat_model == "qwen3:4b-instruct"
+    assert s.ollama_timeout == 180.0
 
 
 def test_settings_vector_backend_override():

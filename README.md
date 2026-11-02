@@ -7,6 +7,7 @@ A modular, **100% Local, Private, and Secure RAG (Retrieval-Augmented Generation
 ## 📌 Overview
 
 This project provides an end-to-end local semantic search and context-grounded answer generation solution using local LLM models via **Ollama** and pluggable vector storage:
+
 - **In-Memory Vector Repository**: Zero-dependency, ephemeral, and fast cosine similarity retrieval (ideal for quick tests and lightweight CLI sessions).
 - **PostgreSQL with pgvector**: Production-grade persistent vector storage using native Cosine Distance (`<=>`) operations, powered by `psycopg` and `pgvector`.
 
@@ -47,6 +48,10 @@ clean-local-rag/
 ├── openapi.yaml                 # OpenAPI specification (Single Source of Truth)
 ├── pyproject.toml               # Dependencies and tools managed with uv
 ├── compose.yaml                 # Docker infrastructure (Ollama + PgVector + Auto-pull)
+├── Makefile                     # Project workflow automation (start, pull, test, run)
+├── scripts/                     # Smart infrastructure orchestration & model scripts
+│   ├── setup-infra.sh           # Smart infra starter (Host Ollama detection vs Docker Compose)
+│   └── pull-models.sh           # Local Ollama model puller
 ├── .env.example                 # Environment variables template
 ├── docs/                        # Sample bilingual knowledge base and media assets
 │   ├── assets/                  # Demo GIFs and screenshots
@@ -125,22 +130,51 @@ Using `uv`:
 uv sync
 ```
 
-### 4. Start Infrastructure with Docker Compose
+### 4. Start Infrastructure (Smart Orchestration via Makefile)
 
-Run the containers for PostgreSQL (`pgvector/pgvector:pg16`) and Ollama:
-
-```bash
-docker compose up -d
-```
-
-> **Note:** The `ollama-init` helper service will automatically wait for Ollama to become healthy and pull the `nomic-embed-text` and `qwen3:4b-instruct` models.
-
-Alternatively, if you already have Ollama installed on your host machine:
+Use the `Makefile` to initialize the infrastructure intelligently:
 
 ```bash
-ollama pull nomic-embed-text
-ollama pull qwen3:4b-instruct
+make up
 ```
+
+#### ⚙️ How the orchestration works (`scripts/setup-infra.sh`)
+
+1. **Local Ollama detected on host:** If the `ollama` binary is installed on your system, the script **does not** start the containerized Ollama (avoiding port `11434` conflicts and CPU overhead). It starts **only PostgreSQL with `pgvector`** (`docker compose up -d postgres`) and validates whether the required models (`nomic-embed-text` and `qwen3:4b-instruct`) are already downloaded.
+   - If any required model is missing, it alerts you and suggests running:
+
+     ```bash
+     make pull-models
+     ```
+
+2. **Local Ollama not detected:** If you do not have Ollama installed locally, the script starts the **full stack** via Docker Compose (`postgres` + `ollama` + `ollama-init`), where the helper service downloads the models automatically.
+
+To shut down the infrastructure at any time:
+
+```bash
+make down
+```
+
+---
+
+## 🛠️ Makefile Commands
+
+The project includes a `Makefile` with shortcuts for common development and infrastructure workflows:
+
+| Command | Description |
+| :--- | :--- |
+| `make up` | Starts infrastructure intelligently (Postgres only if local Ollama exists, or full Docker stack). |
+| `make down` | Stops and removes all Docker Compose containers. |
+| `make pull-models` | Pulls required models (`nomic-embed-text` and `qwen3:4b-instruct`) in local Ollama. |
+| `make status` | Displays the status of Docker containers and local Ollama models. |
+| `make ingest` | Ingests the sample document (`docs/pt-br/visao-geral-e-unidades.md`) into the active backend. |
+| `make cli` | Launches the interactive terminal CLI session. |
+| `make api` | Starts the FastAPI development server (Swagger at `/docs` and Web Chat UI at `/`). |
+| `make test` | Runs the test suite via `pytest`. |
+| `make lint` | Runs static code analysis via `ruff check`. |
+| `make format` | Formats code via `ruff format`. |
+| `make check` | Runs `lint` and `test` sequentially. |
+| `make help` | Displays formatted list of available targets. |
 
 ---
 
@@ -198,6 +232,7 @@ Encerrando sessão interativa...
 #### ⚡ Direct Single Commands
 
 - **Ingest a document file:**
+
   ```bash
   uv run python -m src.presentation.cli ingest --file docs/pt-br/visao-geral-e-unidades.md
   # or with explicit backend:
@@ -205,11 +240,13 @@ Encerrando sessão interativa...
   ```
 
 - **Ingest text directly:**
+
   ```bash
   uv run python -m src.presentation.cli ingest --text "A Barbearia Imperial foi fundada em 2018." --source "historia.txt"
   ```
 
 - **Ask a question:**
+
   ```bash
   uv run python -m src.presentation.cli ask "Quais os horários de funcionamento?"
   # or with explicit backend:
@@ -217,6 +254,7 @@ Encerrando sessão interativa...
   ```
 
 - **Display help:**
+
   ```bash
   uv run python -m src.presentation.cli --help
   ```

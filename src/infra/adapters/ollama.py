@@ -27,12 +27,14 @@ class OllamaAdapter(
         chat_model: str | None = None,
         client: httpx.Client | None = None,
         async_client: httpx.AsyncClient | None = None,
+        timeout: float | None = None,
     ) -> None:
         self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
         self.embed_model = embed_model or settings.embed_model
         self.chat_model = chat_model or settings.chat_model
-        self.client = client or httpx.Client(timeout=60.0)
-        self.async_client = async_client or httpx.AsyncClient(timeout=60.0)
+        req_timeout = timeout or settings.ollama_timeout
+        self.client = client or httpx.Client(timeout=req_timeout)
+        self.async_client = async_client or httpx.AsyncClient(timeout=req_timeout)
 
     def generate_embedding(self, text: str) -> list[float]:
         """
